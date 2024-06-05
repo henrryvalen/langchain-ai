@@ -42,6 +42,7 @@ if TYPE_CHECKING:
         SearchField,
         SemanticConfiguration,
         VectorSearch,
+        SearchResourceEncryptionKey,
     )
 
 # Allow overriding field names for Azure Search
@@ -72,6 +73,7 @@ def _get_search_client(
     semantic_configuration_name: Optional[str] = None,
     fields: Optional[List[SearchField]] = None,
     vector_search: Optional[VectorSearch] = None,
+    search_resource_encryption_key: Optional[SearchResourceEncryptionKey] = None,
     semantic_configurations: Optional[
         Union[SemanticConfiguration, List[SemanticConfiguration]]
     ] = None,
@@ -92,6 +94,7 @@ def _get_search_client(
         HnswAlgorithmConfiguration,
         HnswParameters,
         SearchIndex,
+        SearchResourceEncryptionKey,
         SemanticConfiguration,
         SemanticField,
         SemanticPrioritizedFields,
@@ -200,12 +203,23 @@ def _get_search_client(
             # don't use semantic search
             semantic_search = None
 
+        # Create the encryption key with the configuration
+        if search_resource_encryption_key is not None:
+            search_resource_encryption_key = SearchResourceEncryptionKey(
+                key_name="default_key_name",
+                key_version="default_key_version",
+                vault_uri="https://default-keyvault-name.vault.azure.net",
+            )
+        else:
+            search_resource_encryption_key = None
+
         # Create the search index with the semantic settings and vector search
         index = SearchIndex(
             name=index_name,
             fields=fields,
             vector_search=vector_search,
             semantic_search=semantic_search,
+            search_resource_encryption_key=search_resource_encryption_key,
             scoring_profiles=scoring_profiles,
             default_scoring_profile=default_scoring_profile,
             cors_options=cors_options,
@@ -217,6 +231,7 @@ def _get_search_client(
         index_name=index_name,
         credential=credential,
         user_agent=user_agent,
+        encryption_key=search_resource_encryption_key,
     )
 
 
@@ -233,6 +248,7 @@ class AzureSearch(VectorStore):
         semantic_configuration_name: Optional[str] = None,
         fields: Optional[List[SearchField]] = None,
         vector_search: Optional[VectorSearch] = None,
+        search_resource_encryption_key: Optional[SearchResourceEncryptionKey] = None,
         semantic_configurations: Optional[
             Union[SemanticConfiguration, List[SemanticConfiguration]]
         ] = None,
@@ -293,6 +309,7 @@ class AzureSearch(VectorStore):
             semantic_configuration_name=semantic_configuration_name,
             fields=fields,
             vector_search=vector_search,
+            search_resource_encryption_key=search_resource_encryption_key,
             semantic_configurations=semantic_configurations,
             scoring_profiles=scoring_profiles,
             default_scoring_profile=default_scoring_profile,
