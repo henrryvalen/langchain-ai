@@ -1,4 +1,6 @@
 import json
+import logging
+import time
 from typing import Any, AsyncIterator, Dict, Iterator, List, Mapping, Optional, Union
 
 import aiohttp
@@ -11,6 +13,8 @@ from langchain_core.language_models import BaseLanguageModel
 from langchain_core.language_models.llms import BaseLLM
 from langchain_core.outputs import GenerationChunk, LLMResult
 from langchain_core.pydantic_v1 import Extra
+
+logger = logging.getLogger(__name__)
 
 
 def _stream_response_to_generation_chunk(
@@ -129,6 +133,14 @@ class _OllamaCommon(BaseLanguageModel):
     tokens for authentication.
     """
 
+    preload: Optional[bool] = False
+    """Preload the model into memory at initialization.
+    
+    A simple empty prompt call to `self._generate("")` will preload the model, \
+    as recommended by the Ollama documentation.
+
+    See the [Ollama documents](https://github.com/ollama/ollama/blob/main/docs/faq.md#how-can-i-pre-load-a-model-to-get-faster-response-times)"""
+
     @property
     def _default_params(self) -> Dict[str, Any]:
         """Get the default parameters for calling Ollama."""
@@ -154,6 +166,7 @@ class _OllamaCommon(BaseLanguageModel):
             "system": self.system,
             "template": self.template,
             "keep_alive": self.keep_alive,
+            "preload": self.preload,
         }
 
     @property
@@ -378,6 +391,27 @@ class Ollama(BaseLLM, _OllamaCommon):
             from langchain_community.llms import Ollama
             ollama = Ollama(model="llama2")
     """
+
+    def __init__(
+        self, model: str = "llama2", preload: bool = False, *args: Any, **kwargs: Any
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.model = model
+        self.preload = preload
+        if self.preload:
+            self.preload_model()
+
+    def preload_model(self) -> None:
+        """Public method to preload the model into memory."""
+        start_time = time.time()
+        if self.verbose:
+            logger.info(f"Preloading Ollama model '{self.model}' into memory.")
+        self._generate([""])
+        if self.verbose:
+            elapsed_time = time.time() - start_time
+            logger.info(
+                f"Ollama model '{self.model}' ready in {elapsed_time:.2f} seconds."
+            )
 
     class Config:
         """Configuration for this pydantic object."""
