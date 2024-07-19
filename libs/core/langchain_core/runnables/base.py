@@ -2945,6 +2945,7 @@ class RunnableSequence(RunnableSerializable[Input, Output]):
                 local_tags=None,
                 inheritable_metadata=config.get("metadata"),
                 local_metadata=None,
+                parent=config.get("parent"),
             )
             for config in configs
         ]
@@ -3071,6 +3072,7 @@ class RunnableSequence(RunnableSerializable[Input, Output]):
                 local_tags=None,
                 inheritable_metadata=config.get("metadata"),
                 local_metadata=None,
+                parent=config.get("parent"),
             )
             for config in configs
         ]
@@ -3531,6 +3533,7 @@ class RunnableParallel(RunnableSerializable[Input, Dict[str, Any]]):
             local_tags=None,
             inheritable_metadata=config.get("metadata"),
             local_metadata=None,
+            parent=config.get("parent"),
         )
         # start the root run
         run_manager = callback_manager.on_chain_start(
