@@ -11,6 +11,131 @@ from langchain_community.utils.openai import is_openai_v1
 
 logger = logging.getLogger(__name__)
 
+class AzureOpenAIWhisperParser(BaseBlobParser):
+    """Transcribe and parse audio files.
+
+    Audio transcription is with Azure OpenAI Whisper model.
+
+    Args:
+        api_key: Azure OpenAI API key
+        chunk_duration_threshold: minimum duration of a chunk in seconds
+            NOTE: According to the OpenAI API, the chunk duration should be at least 0.1
+            seconds. If the chunk duration is less or equal than the threshold,
+            it will be skipped.
+    """
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        *,
+        chunk_duration_threshold: float = 0.1,
+        azure_endpoint: Optional[str] = None,
+        api_version: Optional[str] = None,
+        language: Union[str, None] = None,
+        prompt: Union[str, None] = None,
+        response_format: Union[
+            Literal["json", "text", "srt", "verbose_json", "vtt"], None
+        ] = None,
+        temperature: Union[float, None] = None,
+    ):
+        self.api_key = api_key
+        self.chunk_duration_threshold = chunk_duration_threshold
+        self.azure_endpoint = (
+            azure_endpoint if azure_endpoint is not None else os.environ.get("AZURE_OPENAI_ENDPOINT")
+        )
+        self.api_version = (
+            api_version if api_version is not None else os.environ.get("OPENAI_API_VERSION")
+        )
+        self.language = language
+        self.prompt = prompt
+        self.response_format = response_format
+        self.temperature = temperature
+
+    @property
+    def _create_params(self) -> Dict[str, Any]:
+        params = {
+            "language": self.language,
+            "prompt": self.prompt,
+            "response_format": self.response_format,
+            "temperature": self.temperature,
+        }
+        return {k: v for k, v in params.items() if v is not None}
+
+    def lazy_parse(self, blob: Blob) -> Iterator[Document]:
+        """Lazily parse the blob."""
+
+        import io
+
+        try:
+            import openai
+        except ImportError:
+            raise ImportError(
+                "openai package not found, please install it with "
+                "`pip install openai`"
+            )
+        try:
+            from pydub import AudioSegment
+        except ImportError:
+            raise ImportError(
+                "pydub package not found, please install it with " "`pip install pydub`"
+            )
+
+        if is_openai_v1():
+            # api_key optional, defaults to `os.environ['AZURE_OPENAI_API_KEY']`
+            # same for azure_endpoint and api_version
+            client = openai.AzureOpenAI(api_key=self.api_key, azure_endpoint=self.azure_endpoint, api_version=self.api_version)
+        else:
+            # Set the API key if provided
+            if self.api_key:
+                openai.api_key = self.api_key
+            if self.base_url:
+                openai.base_url = self.azure_endpoint
+
+        # Audio file from disk
+        audio = AudioSegment.from_file(blob.path)
+
+        # Define the duration of each chunk in minutes
+        # Need to meet 25MB size limit for Whisper API
+        chunk_duration = 20
+        chunk_duration_ms = chunk_duration * 60 * 1000
+
+        # Split the audio into chunk_duration_ms chunks
+        for split_number, i in enumerate(range(0, len(audio), chunk_duration_ms)):
+            # Audio chunk
+            chunk = audio[i : i + chunk_duration_ms]
+            # Skip chunks that are too short to transcribe
+            if chunk.duration_seconds <= self.chunk_duration_threshold:
+                continue
+            file_obj = io.BytesIO(chunk.export(format="mp3").read())
+            if blob.source is not None:
+                file_obj.name = blob.source + f"_part_{split_number}.mp3"
+            else:
+                file_obj.name = f"part_{split_number}.mp3"
+
+            # Transcribe
+            print(f"Transcribing part {split_number + 1}!")  # noqa: T201
+            attempts = 0
+            while attempts < 3:
+                try:
+                    if is_openai_v1():
+                        transcript = client.audio.transcriptions.create(
+                            model="whisper", file=file_obj, **self._create_params
+                        )
+                    else:
+                        transcript = openai.Audio.transcribe("whisper", file_obj)
+                    break
+                except Exception as e:
+                    attempts += 1
+                    print(f"Attempt {attempts} failed. Exception: {str(e)}")  # noqa: T201
+                    time.sleep(5)
+            else:
+                print("Failed to transcribe after 3 attempts.")  # noqa: T201
+                continue
+
+            yield Document(
+                page_content=transcript.text,
+                metadata={"source": blob.source, "chunk": split_number},
+            )
 
 class OpenAIWhisperParser(BaseBlobParser):
     """Transcribe and parse audio files.
