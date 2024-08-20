@@ -11,6 +11,7 @@ from langchain_community.utils.openai import is_openai_v1
 
 logger = logging.getLogger(__name__)
 
+
 class AzureOpenAIWhisperParser(BaseBlobParser):
     """Transcribe and parse audio files.
 
@@ -82,9 +83,11 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         if is_openai_v1():
             # api_key optional, defaults to `os.environ['AZURE_OPENAI_API_KEY']`
             # same for azure_endpoint and api_version
-            client = openai.AzureOpenAI(api_key=self.api_key,
-                                        azure_endpoint=self.azure_endpoint,
-                                        api_version=self.api_version)
+            client = openai.AzureOpenAI(
+                api_key=self.api_key,
+                azure_endpoint=self.azure_endpoint,
+                api_version=self.api_version,
+            )
         else:
             # Set the API key if provided
             if self.api_key:
@@ -120,15 +123,14 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 try:
                     if is_openai_v1():
                         transcript = client.audio.transcriptions.create(
-                            model=self.deployment_id, 
-                            file=file_obj, 
-                            **self._create_params
-                            )
+                            model=self.deployment_id,
+                            file=file_obj,
+                            **self._create_params,
+                        )
                     else:
                         transcript = openai.Audio.transcribe(
-                            self.deployment_id, 
-                            file_obj
-                            )
+                            self.deployment_id, file_obj
+                        )
                     break
                 except Exception as e:
                     attempts += 1
@@ -142,6 +144,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 page_content=transcript.text,
                 metadata={"source": blob.source, "chunk": split_number},
             )
+
 
 class OpenAIWhisperParser(BaseBlobParser):
     """Transcribe and parse audio files.
