@@ -3,10 +3,11 @@ import os
 import time
 from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union
 
+from langchain_core.documents import Document
+
 from langchain_community.document_loaders.base import BaseBlobParser
 from langchain_community.document_loaders.blob_loaders import Blob
 from langchain_community.utils.openai import is_openai_v1
-from langchain_core.documents import Document
 
 logger = logging.getLogger(__name__)
 
@@ -443,8 +444,7 @@ class YandexSTTParser(BaseBlobParser):
         """Lazily parse the blob."""
 
         try:
-            from speechkit import (configure_credentials, creds,
-                                   model_repository)
+            from speechkit import configure_credentials, creds, model_repository
             from speechkit.stt import AudioProcessingType
         except ImportError:
             raise ImportError(
