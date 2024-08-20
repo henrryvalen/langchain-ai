@@ -40,12 +40,9 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         temperature: Union[float, None] = None,
     ):
         self.api_key = api_key
-        self.azure_endpoint = (
-            azure_endpoint if azure_endpoint is not None else os.environ.get("AZURE_OPENAI_ENDPOINT")
-        )
-        self.api_version = (
-            api_version if api_version is not None else os.environ.get("OPENAI_API_VERSION")
-        )
+        self.azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
+        self.api_version = api_version or os.environ.get("OPENAI_API_VERSION")
+
         self.deployment_id = deployment_id
         self.chunk_duration_threshold = chunk_duration_threshold
         self.language = language
@@ -85,7 +82,9 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         if is_openai_v1():
             # api_key optional, defaults to `os.environ['AZURE_OPENAI_API_KEY']`
             # same for azure_endpoint and api_version
-            client = openai.AzureOpenAI(api_key=self.api_key, azure_endpoint=self.azure_endpoint, api_version=self.api_version)
+            client = openai.AzureOpenAI(api_key=self.api_key,
+                                        azure_endpoint=self.azure_endpoint,
+                                        api_version=self.api_version)
         else:
             # Set the API key if provided
             if self.api_key:
@@ -121,10 +120,15 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 try:
                     if is_openai_v1():
                         transcript = client.audio.transcriptions.create(
-                            model=self.deployment_id, file=file_obj, **self._create_params
-                        )
+                            model=self.deployment_id, 
+                            file=file_obj, 
+                            **self._create_params
+                            )
                     else:
-                        transcript = openai.Audio.transcribe(self.deployment_id, file_obj)
+                        transcript = openai.Audio.transcribe(
+                            self.deployment_id, 
+                            file_obj
+                            )
                     break
                 except Exception as e:
                     attempts += 1
