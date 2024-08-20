@@ -4,7 +4,6 @@ import time
 from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union
 
 from langchain_core.documents import Document
-
 from langchain_community.document_loaders.base import BaseBlobParser
 from langchain_community.document_loaders.blob_loaders import Blob
 from langchain_community.utils.openai import is_openai_v1
