@@ -28,6 +28,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         self,
         api_key: Optional[str] = None,
         *,
+        deployment_id: str,
         chunk_duration_threshold: float = 0.1,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -39,13 +40,14 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         temperature: Union[float, None] = None,
     ):
         self.api_key = api_key
-        self.chunk_duration_threshold = chunk_duration_threshold
         self.azure_endpoint = (
             azure_endpoint if azure_endpoint is not None else os.environ.get("AZURE_OPENAI_ENDPOINT")
         )
         self.api_version = (
             api_version if api_version is not None else os.environ.get("OPENAI_API_VERSION")
         )
+        self.deployment_id = deployment_id
+        self.chunk_duration_threshold = chunk_duration_threshold
         self.language = language
         self.prompt = prompt
         self.response_format = response_format
@@ -119,10 +121,10 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 try:
                     if is_openai_v1():
                         transcript = client.audio.transcriptions.create(
-                            model="whisper", file=file_obj, **self._create_params
+                            model=self.deployment_id, file=file_obj, **self._create_params
                         )
                     else:
-                        transcript = openai.Audio.transcribe("whisper", file_obj)
+                        transcript = openai.Audio.transcribe(self.deployment_id, file_obj)
                     break
                 except Exception as e:
                     attempts += 1
