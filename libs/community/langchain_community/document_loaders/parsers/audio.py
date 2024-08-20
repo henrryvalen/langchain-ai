@@ -31,7 +31,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         *,
         deployment_id: str,
         chunk_duration_threshold: float = 0.1,
-        azure_endpoint: Optional[str] = None,
+        base_url: Optional[str] = None,
         api_version: Optional[str] = None,
         language: Union[str, None] = None,
         prompt: Union[str, None] = None,
@@ -41,7 +41,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         temperature: Union[float, None] = None,
     ):
         self.api_key = api_key
-        self.azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
+        self.base_url = base_url or os.environ.get("AZURE_OPENAI_ENDPOINT")
         self.api_version = api_version or os.environ.get("OPENAI_API_VERSION")
 
         self.deployment_id = deployment_id
@@ -85,7 +85,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             # same for azure_endpoint and api_version
             client = openai.AzureOpenAI(
                 api_key=self.api_key,
-                azure_endpoint=self.azure_endpoint,
+                azure_endpoint=self.base_url,
                 api_version=self.api_version,
             )
         else:
@@ -93,7 +93,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             if self.api_key:
                 openai.api_key = self.api_key
             if self.base_url:
-                openai.base_url = self.azure_endpoint
+                openai.base_url = self.base_url
 
         # Audio file from disk
         audio = AudioSegment.from_file(blob.path)
