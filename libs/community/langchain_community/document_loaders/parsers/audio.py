@@ -85,7 +85,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         if is_openai_v1():
             # api_key optional, defaults to `os.environ['AZURE_OPENAI_API_KEY']`
             # api_version optional, defaults to `os.environ['OPENAI_API_VERSION']`
-            # azure_endpoint/base_rul optional, 
+            # azure_endpoint/base_rule optional,
             # defaults to `os.environ['AZURE_OPENAI_ENDPOINT']`
             client = openai.AzureOpenAI(
                 api_key=self.api_key,
