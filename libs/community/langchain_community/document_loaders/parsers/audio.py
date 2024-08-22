@@ -16,6 +16,8 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
     """Transcribe and parse audio files.
 
     Audio transcription is with Azure OpenAI Whisper model.
+    This is different to the Open AI Whisper parser and requires
+    an Azure OpenAI API Key.
 
     Args:
         api_key: Azure OpenAI API key
@@ -82,7 +84,9 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
 
         if is_openai_v1():
             # api_key optional, defaults to `os.environ['AZURE_OPENAI_API_KEY']`
-            # same for azure_endpoint and api_version
+            # api_version optional, defaults to `os.environ['OPENAI_API_VERSION']`
+            # azure_endpoint/base_rul optional, 
+            # defaults to `os.environ['AZURE_OPENAI_ENDPOINT']`
             client = openai.AzureOpenAI(
                 api_key=self.api_key,
                 azure_endpoint=self.base_url,
