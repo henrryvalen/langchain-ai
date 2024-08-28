@@ -217,7 +217,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         if not str(blob.path).endswith(self.input_format):
             raise ValueError(
                 "File must be of one of the following types: "
-                "flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav or webm"
+                f"{str(self.input_format)}"
             )
         # Audio file from disk
         audio = AudioSegment.from_file(blob.path)
