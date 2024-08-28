@@ -186,7 +186,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
 
         # Audio file from disk
         audio = AudioSegment.from_file(blob.path)
-        file_extension = os.path.splitext(blob.path)[1][1:]
+        file_extension = os.path.splitext(str(blob.path))[1][1:]
         # Define the duration of each chunk in minutes
         # Need to meet 25MB size limit for Whisper API
         chunk_duration = 20
