@@ -1,6 +1,6 @@
+import io
 import logging
 import os
-import io
 import time
 from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union
 
@@ -44,9 +44,9 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             api_key (Optional[str]): Azure OpenAI API key.
             deployment_model (str): Identifier for the specific model deployment.
             chunk_duration_threshold (float): Minimum duration of a chunk in seconds
-                NOTE: According to the OpenAI API, the chunk duration should be at least 0.1
-                seconds. If the chunk duration is less or equal than the threshold,
-                it will be skipped.
+                NOTE: According to the OpenAI API, the chunk duration should be at 
+                least 0.1 seconds. If the chunk duration is less or equal 
+                than the threshold, it will be skipped.
             azure_endpoint (Optional[str]): URL endpoint for the Azure OpenAI service.
             api_version (Optional[str]): Version of the OpenAI API to use.
             language (Optional[str]): Language for processing the request.
@@ -54,7 +54,8 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             response_format 
                 (Union[Literal["json", "text", "srt", "verbose_json", "vtt"], None]): 
                 Format for the response from the service.
-            temperature (Optional[float]): Controls the randomness of the AI model’s output.
+            temperature (Optional[float]): Controls the randomness 
+                of the AI model’s output.
         """
         self.api_key = api_key or os.environ.get("AZURE_OPENAI_API_KEY")
         self.azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -125,7 +126,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         # Need to meet 25MB size limit for Whisper API
         chunk_duration = 20
         chunk_duration_ms = chunk_duration * 60 * 1000
-        print(blob.source)
+
         # Split the audio into chunk_duration_ms chunks
         for split_number, i in enumerate(range(0, len(audio), chunk_duration_ms)):
             # Audio chunk
@@ -135,7 +136,8 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 continue
             file_obj = io.BytesIO(chunk.export(format=file_extension).read())
             if blob.source is not None:
-                file_obj.name = os.path.splitext(blob.source)[0] + f"_part_{split_number}.{file_extension}"
+                file_obj.name = (os.path.splitext(blob.source)[0] 
+                    + f"_part_{split_number}.{file_extension}")
             else:
                 file_obj.name = f"part_{split_number}.{file_extension}"
 
