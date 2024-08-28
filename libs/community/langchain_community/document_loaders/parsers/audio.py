@@ -20,6 +20,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
     This is different to the Open AI Whisper parser and requires
     an Azure OpenAI API Key.
     """
+
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -31,11 +32,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         response_format: Union[
             Literal["json", "text", "srt", "verbose_json", "vtt"], None
         ] = None,
-        # input_format: Union[
-        #     Literal["flac", "mp3", "mp4", "mpeg", "mpga", "m4a", "ogg", "wav", "webm"]
-        # ] = "mp3",
         temperature: Optional[float] = None,
-
         deployment_id: str,
         chunk_duration_threshold: float = 0.1,
     ):
@@ -44,17 +41,17 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             api_key (Optional[str]): Azure OpenAI API key.
             deployment_model (str): Identifier for the specific model deployment.
             chunk_duration_threshold (float): Minimum duration of a chunk in seconds
-                NOTE: According to the OpenAI API, the chunk duration should be at 
-                least 0.1 seconds. If the chunk duration is less or equal 
+                NOTE: According to the OpenAI API, the chunk duration should be at
+                least 0.1 seconds. If the chunk duration is less or equal
                 than the threshold, it will be skipped.
             azure_endpoint (Optional[str]): URL endpoint for the Azure OpenAI service.
             api_version (Optional[str]): Version of the OpenAI API to use.
             language (Optional[str]): Language for processing the request.
             prompt (Optional[str]): Query or instructions for the AI model.
-            response_format 
-                (Union[Literal["json", "text", "srt", "verbose_json", "vtt"], None]): 
+            response_format
+                (Union[Literal["json", "text", "srt", "verbose_json", "vtt"], None]):
                 Format for the response from the service.
-            temperature (Optional[float]): Controls the randomness 
+            temperature (Optional[float]): Controls the randomness
                 of the AI model’s output.
         """
         self.api_key = api_key or os.environ.get("AZURE_OPENAI_API_KEY")
@@ -65,7 +62,6 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         self.prompt = prompt
         self.response_format = response_format
         self.temperature = temperature
-        # self.input_format = input_format
 
         self.deployment_id = deployment_id
         self.chunk_duration_threshold = chunk_duration_threshold
@@ -82,12 +78,12 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
 
     def lazy_parse(self, blob: Blob) -> Iterator[Document]:
         """Lazily parse the blob.
-        
+
         Args:
             blob (Blob): The file to be parsed.
 
         Returns:
-            Iterator[Document]: The parsed transcript of the file. 
+            Iterator[Document]: The parsed transcript of the file.
         """
 
         try:
@@ -97,13 +93,12 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 "openai package not found, please install it with "
                 "`pip install openai`"
             )
-        
+
         try:
             from pydub import AudioSegment
         except ImportError:
             raise ImportError(
-                "pydub package not found, please install it with " 
-                "`pip install pydub`"
+                "pydub package not found, please install it with " "`pip install pydub`"
             )
 
         if is_openai_v1():
@@ -136,8 +131,10 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 continue
             file_obj = io.BytesIO(chunk.export(format=file_extension).read())
             if blob.source is not None:
-                file_obj.name = (os.path.splitext(blob.source)[0] 
-                    + f"_part_{split_number}.{file_extension}")
+                file_obj.name = (
+                    os.path.splitext(blob.source)[0]
+                    + f"_part_{split_number}.{file_extension}"
+                )
             else:
                 file_obj.name = f"part_{split_number}.{file_extension}"
 
