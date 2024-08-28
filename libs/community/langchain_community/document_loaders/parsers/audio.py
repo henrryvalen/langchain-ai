@@ -19,6 +19,69 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
     Audio transcription is with the Azure OpenAI Whisper model.
     This is different to the Open AI Whisper parser and requires
     an Azure OpenAI API Key.
+
+    **NOTE**: The Azure OpenAI Whisper is suitable for small files of
+    less than 25 MB. If you need to transcribe a larger file the Azure
+    AI Speech batch transcription API may be more suitable:
+    https://learn.microsoft.com/azure/ai-services/speech-service/batch-transcription-create?pivots=rest-api#use-a-whisper-model
+
+    Setup:
+        Head to the https://learn.microsoft.com/azure/ai-services/openai/whisper-quickstart?tabs=command-line%2Cpython-new&pivots=programming-language-python
+        to create your Azure OpenAI deployment.
+
+        Then install ``langchain`` and set environment variables
+        ``AZURE_OPENAI_API_KEY``, ``AZURE_OPENAI_ENDPOINT`` and ``OPENAI_API_VERSION``:
+
+        .. code-block:: bash
+
+            pip install -U langchain
+
+            export AZURE_OPENAI_API_KEY="your-api-key"
+            export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com/"
+            export OPENAI_API_VERSION="your-api-version"
+
+    Instantiate:
+        .. code-block:: python
+
+            from langchain.community import AzureOpenAIWhisperParser
+
+            whisper = AzureOpenAIWhisperParser(
+                deployment_name="your-whisper-deployment",
+                api_version="2024-05-01-preview",
+                api_key="your-api-key",
+                # other params...
+            )
+
+    lazy_parse:
+        .. code-block:: python
+
+            from langchain.core.langchain_core.documents import Blob
+
+            audio_path="your-audio-file-path"
+            audio_blob=Blob(path=audio_path)
+
+            response=whisper.lazy_parse(audio_blob)
+
+            for file in response:
+                print(file.page_content)
+
+    The AzureOpenAIWhisperParser can be used in conjunction with video/document
+    loaders and ``GenericLoader`` to automate audio retrieval and parsing.
+
+    YoutubeLoader:
+        .. code-block:: python
+            from langchain_community.document_loaders.blob_loaders import YoutubeLoader
+            from langchain_community.document_loaders.generic import GenericLoader
+
+            # Must be a list
+            url=["your url"]
+
+            save_dir="directory to download videos to"
+
+            loader=GenericLoader(YoutubeAudioLoader(url, save_dir),
+                OpenAIWhisperParser()
+            )
+            docs=loader.load()
     """
 
     def __init__(
@@ -33,26 +96,33 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             Literal["json", "text", "srt", "verbose_json", "vtt"], None
         ] = None,
         temperature: Optional[float] = None,
-        deployment_id: str,
+        deployment_name: str,
         chunk_duration_threshold: float = 0.1,
     ):
         """Initialize the parser.
         Args:
-            api_key (Optional[str]): Azure OpenAI API key.
-            deployment_model (str): Identifier for the specific model deployment.
-            chunk_duration_threshold (float): Minimum duration of a chunk in seconds
-                NOTE: According to the OpenAI API, the chunk duration should be at
+            api_key: Optional[str]
+                Azure OpenAI API key.
+            deployment_model: str
+                Identifier for the specific model deployment.
+            chunk_duration_threshold: float
+                Minimum duration of a chunk in seconds.
+                **NOTE**: According to the OpenAI API, the chunk duration should be at
                 least 0.1 seconds. If the chunk duration is less or equal
                 than the threshold, it will be skipped.
-            azure_endpoint (Optional[str]): URL endpoint for the Azure OpenAI service.
-            api_version (Optional[str]): Version of the OpenAI API to use.
-            language (Optional[str]): Language for processing the request.
-            prompt (Optional[str]): Query or instructions for the AI model.
-            response_format
-                (Union[Literal["json", "text", "srt", "verbose_json", "vtt"], None]):
+            azure_endpoint: Optional[str]
+                URL endpoint for the Azure OpenAI service.
+            api_version: Optional[str]
+                Version of the OpenAI API to use.
+            language: Optional[str]
+                Language for processing the request.
+            prompt: Optional[str]
+                Query or instructions for the AI model.
+            response_format:
+                Union[Literal["json", "text", "srt", "verbose_json", "vtt"], None]
                 Format for the response from the service.
-            temperature (Optional[float]): Controls the randomness
-                of the AI model’s output.
+            temperature: Optional[float]
+                Controls the randomness of the AI model’s output.
         """
         self.api_key = api_key or os.environ.get("AZURE_OPENAI_API_KEY")
         self.azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -63,7 +133,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         self.response_format = response_format
         self.temperature = temperature
 
-        self.deployment_id = deployment_id
+        self.deployment_name = deployment_name
         self.chunk_duration_threshold = chunk_duration_threshold
 
     @property
@@ -145,13 +215,13 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 try:
                     if is_openai_v1():
                         transcript = client.audio.transcriptions.create(
-                            model=self.deployment_id,
+                            model=self.deployment_name,
                             file=file_obj,
                             **self._create_params,
                         )
                     else:
                         transcript = openai.Audio.transcribe(
-                            self.deployment_id, file_obj
+                            self.deployment_name, file_obj
                         )
                     break
                 except Exception as e:
