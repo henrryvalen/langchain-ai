@@ -101,7 +101,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         response_format: Union[
             Literal["json", "text", "srt", "verbose_json", "vtt"], None
         ] = None,
-        input_format: Tuple[str] = (
+        input_format: Tuple = (
             ".flac",
             ".mp3",
             ".mp4",
