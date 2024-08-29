@@ -73,18 +73,22 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
     The AzureOpenAIWhisperParser can be used in conjunction with video/document
     loaders and ``GenericLoader`` to automate audio retrieval and parsing.
 
-    YoutubeLoader:
+    YoutubeAudioLoader:
         .. code-block:: python
-            from langchain_community.document_loaders.blob_loaders import YoutubeLoader
+            from langchain_community.document_loaders.blob_loaders import (
+                YoutubeAudioLoader
+            )
             from langchain_community.document_loaders.generic import GenericLoader
 
             # Must be a list
             url=["your url"]
 
+            deployment_name=os.environ['your-deployment-name']
+
             save_dir="directory to download videos to"
 
             loader=GenericLoader(YoutubeAudioLoader(url, save_dir),
-                OpenAIWhisperParser()
+                AzureOpenAIWhisperParser(deployment_name=deployment_name)
             )
             docs=loader.load()
     """
@@ -224,6 +228,10 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         # Get file extension from the file path
         dot_file_extension = os.path.splitext(str(blob.path))[1]
         file_extension = dot_file_extension[1:]
+        # m4a and mpga are not valid format flags for ffmpeg
+        # They do have equivalent flags that can be used though
+        format_map = {"m4a": "mp4", "mpga": "mp3"}
+        file_extension = format_map.get(file_extension, file_extension)
         # Define the duration of each chunk in minutes
         # Need to meet 25MB size limit for Whisper API
         chunk_duration = 20
