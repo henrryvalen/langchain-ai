@@ -13,6 +13,7 @@ from langchain_core.messages import (
     BaseMessage,
     HumanMessage,
     SystemMessage,
+    ToolMessage,
     get_buffer_string,
 )
 from langchain_core.prompt_values import ChatPromptValue
@@ -26,10 +27,13 @@ from langchain_core.prompts.chat import (
     HumanMessagePromptTemplate,
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
-    _convert_to_message,
+    _convert_to_message_template,
 )
 from langchain_core.pydantic_v1 import ValidationError
+from langchain_core.utils.image import image_to_data_url
 from tests.unit_tests.pydantic_utils import _schema
+
+CUR_DIR = Path(__file__).parent.absolute().resolve()
 
 
 @pytest.fixture
@@ -432,7 +436,7 @@ def test_convert_to_message(
     args: Any, expected: Union[BaseMessage, BaseMessagePromptTemplate]
 ) -> None:
     """Test convert to message."""
-    assert _convert_to_message(args) == expected
+    assert _convert_to_message_template(args) == expected
 
 
 def test_chat_prompt_template_indexing() -> None:
@@ -477,7 +481,7 @@ def test_convert_to_message_is_strict() -> None:
         # meow does not correspond to a valid message type.
         # this test is here to ensure that functionality to interpret `meow`
         # as a role is NOT added.
-        _convert_to_message(("meow", "question"))
+        _convert_to_message_template(("meow", "question"))
 
 
 def test_chat_message_partial() -> None:
@@ -863,3 +867,84 @@ async def test_chat_tmpl_serdes(snapshot: SnapshotAssertion) -> None:
     )
     assert dumpd(template) == snapshot()
     assert load(dumpd(template)) == template
+
+
+def test_chat_tmpl_dict_msg() -> None:
+    template = ChatPromptTemplate(
+        [
+            {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "{text1}",
+                        "cache_control": {"type": "ephemeral"},
+                    },
+                    {"type": "image_url", "image_url": {"path": "{local_image_path}"}},
+                ],
+                "name": "{name1}",
+                "tool_calls": [
+                    {
+                        "name": "{tool_name1}",
+                        "args": {"arg1": "{tool_arg1}"},
+                        "id": "1",
+                        "type": "tool_call",
+                    }
+                ],
+            },
+            {
+                "role": "tool",
+                "content": "{tool_content2}",
+                "tool_call_id": "1",
+                "name": "{tool_name1}",
+            },
+        ]
+    )
+    image_path = str(CUR_DIR / "favicon-16x16.png")
+    image_url = image_to_data_url(image_path)
+    expected = [
+        AIMessage(
+            [
+                {
+                    "type": "text",
+                    "text": "important message",
+                    "cache_control": {"type": "ephemeral"},
+                },
+                {"type": "image_url", "image_url": {"url": image_url}},
+            ],
+            name="foo",
+            tool_calls=[
+                {
+                    "name": "do_stuff",
+                    "args": {"arg1": "important arg1"},
+                    "id": "1",
+                    "type": "tool_call",
+                }
+            ],
+        ),
+        ToolMessage("foo", name="do_stuff", tool_call_id="1"),
+    ]
+
+    actual = template.invoke(
+        {
+            "local_image_path": image_path,
+            "text1": "important message",
+            "name1": "foo",
+            "tool_arg1": "important arg1",
+            "tool_name1": "do_stuff",
+            "tool_content2": "foo",
+        }
+    ).to_messages()
+    assert actual == expected
+
+    partial_ = template.partial(**{"local_image_path": image_path})
+    actual = partial_.invoke(
+        {
+            "text1": "important message",
+            "name1": "foo",
+            "tool_arg1": "important arg1",
+            "tool_name1": "do_stuff",
+            "tool_content2": "foo",
+        }
+    ).to_messages()
+    assert actual == expected
