@@ -14,28 +14,25 @@ logger = logging.getLogger(__name__)
 
 
 class AzureOpenAIWhisperParser(BaseBlobParser):
-    """Transcribe and parse audio files.
+    """
+    Transcribe and parse audio files using Azure OpenAI Whisper.
 
-    Audio transcription is with the Azure OpenAI Whisper model.
-    This is different to the Open AI Whisper parser and requires
-    an Azure OpenAI API Key.
+    This parser integrates with the Azure OpenAI Whisper model to transcribe
+    audio files. It differs from the standard OpenAI Whisper parser, requiring
+    an Azure API key and endpoint. The parser is limited to files under 25 MB.
 
-    **NOTE**: The Azure version, however, still uses the OpenAI SDK and is therefore
-    still a dependency of the Azure OpenAI Whisper model. The main differences
-    between the two models is that the Azure Whisper model is integrated
-    with other Azure services and can be used within the Azure ecosystem,
-    whereas the OpenAI model is only vailable via OpenAI's hosted API endpoints.
-    Furthermore, the Azure OpenAI Whisper is suitable for small files of
-    less than 25 MB. If you need to transcribe a larger file the Azure
-    AI Speech batch transcription API may be more suitable:
+    **Note**:
+    While this parser uses the OpenAI API, it is configured for Azure OpenAI
+    services. The key difference is the integration with the Azure ecosystem,
+    making it suitable for workflows involving other Azure services.
+
+    For files larger than 25 MB, consider using Azure AI Speech batch transcription:
     https://learn.microsoft.com/azure/ai-services/speech-service/batch-transcription-create?pivots=rest-api#use-a-whisper-model
 
     Setup:
-        Head to the https://learn.microsoft.com/azure/ai-services/openai/whisper-quickstart?tabs=command-line%2Cpython-new&pivots=programming-language-python
-        to create your Azure Whisper deployment.
-
-        Then install ``langchain`` and set environment variables
-        ``AZURE_OPENAI_API_KEY``, ``AZURE_OPENAI_ENDPOINT`` and ``OPENAI_API_VERSION``:
+        1. Follow the instructions here to deploy Azure Whisper:
+           https://learn.microsoft.com/azure/ai-services/openai/whisper-quickstart?tabs=command-line%2Cpython-new&pivots=programming-language-python
+        2. Install ``langchain`` and set the following environment variables:
 
         .. code-block:: bash
 
@@ -45,52 +42,46 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com/"
             export OPENAI_API_VERSION="your-api-version"
 
-    Instantiate:
+    Example Usage:
         .. code-block:: python
 
             from langchain.community import AzureOpenAIWhisperParser
 
-            whisper = AzureOpenAIWhisperParser(
+            whisper_parser = AzureOpenAIWhisperParser(
                 deployment_name="your-whisper-deployment",
                 api_version="2024-05-01-preview",
                 api_key="your-api-key",
                 # other params...
             )
 
-    lazy_parse:
+            audio_blob = Blob(path="your-audio-file-path")
+            response = whisper_parser.lazy_parse(audio_blob)
+
+            for document in response:
+                print(document.page_content)
+
+    Integration with Other Loaders:
+        The AzureOpenAIWhisperParser can be used with video/audio loaders and
+        `GenericLoader` to automate retrieval and parsing.
+
+    YoutubeAudioLoader Example:
         .. code-block:: python
 
-            from langchain.core.langchain_core.documents import Blob
-
-            audio_path="your-audio-file-path"
-            audio_blob=Blob(path=audio_path)
-
-            response=whisper.lazy_parse(audio_blob)
-
-            for file in response:
-                print(file.page_content)
-
-    The AzureOpenAIWhisperParser can be used in conjunction with video/document
-    loaders and ``GenericLoader`` to automate audio retrieval and parsing.
-
-    YoutubeAudioLoader:
-        .. code-block:: python
             from langchain_community.document_loaders.blob_loaders import (
                 YoutubeAudioLoader
-            )
+                )
             from langchain_community.document_loaders.generic import GenericLoader
 
             # Must be a list
-            url=["your url"]
+            youtube_url = ["https://your-youtube-url"]
+            save_dir = "directory-to-download-videos"
 
-            deployment_name=os.environ['your-deployment-name']
-
-            save_dir="directory to download videos to"
-
-            loader=GenericLoader(YoutubeAudioLoader(url, save_dir),
-                AzureOpenAIWhisperParser(deployment_name=deployment_name)
+            loader = GenericLoader(
+                YoutubeAudioLoader(youtube_url, save_dir),
+                AzureOpenAIWhisperParser(deployment_name="your-deployment-name")
             )
-            docs=loader.load()
+
+            docs = loader.load()
     """
 
     def __init__(
@@ -119,39 +110,44 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         temperature: Optional[float] = None,
         deployment_name: str,
         chunk_duration_threshold: float = 0.1,
+        byte_limit: int = 26222592,
         max_retries: int = 3,
     ):
-        """Initialize the parser.
+        """
+        Initialize the AzureOpenAIWhisperParser.
+
         Args:
-            api_key: Optional[str]
-                Azure OpenAI API key.
-            deployment_model: str
-                Identifier for the specific model deployment.
-            chunk_duration_threshold: float
-                Minimum duration of a chunk in seconds.
-                **NOTE**: According to the OpenAI API, the chunk duration should be at
-                least 0.1 seconds. If the chunk duration is less or equal
-                than the threshold, it will be skipped.
-            max_retries: int
-                Max number of retries when the API call doesn't succeed.
-            azure_endpoint: Optional[str]
-                URL endpoint for the Azure OpenAI service.
-            api_version: Optional[str]
-                Version of the OpenAI API to use.
-            language: Optional[str]
-                Language for processing the request.
-            prompt: Optional[str]
-                Query or instructions for the AI model.
-            response_format:
-                Union[Literal["json", "text", "srt", "verbose_json", "vtt"], None]
-                Format for the response from the service.
-            input_format: Tuple[str]
-                Format of the input file, can be configured to only accept certain
-                file types.
-                **NOTE**: The Whisper API will only accept files of type:
-                flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm
-            temperature: Optional[float]
-                Controls the randomness of the AI model’s output.
+            api_key (Optional[str]):
+                Azure OpenAI API key. If not provided, defaults to the
+                `AZURE_OPENAI_API_KEY` environment variable.
+            azure_endpoint (Optional[str]):
+                Azure OpenAI service endpoint. Defaults to `AZURE_OPENAI_ENDPOINT`
+                environment variable if not set.
+            api_version (Optional[str]):
+                API version to use,
+                defaults to the `OPENAI_API_VERSION` environment variable.
+            azure_ad_token (Optional[str]):
+                Azure Active Directory token for authentication (if applicable).
+            language (Optional[str]):
+                Language in which the request should be processed.
+            prompt (Optional[str]):
+                Custom instructions or prompt for the Whisper model.
+            response_format (Union[str, None]):
+                The desired output format. Options: "json", "text", "srt",
+                "verbose_json", "vtt".
+            input_format (Tuple):
+                Supported audio file formats (e.g., ".mp3", ".wav").
+            temperature (Optional[float]):
+                Controls the randomness of the model's output.
+            deployment_name (str):
+                The deployment name of the Whisper model.
+            byte_limit (int):
+                Maximum allowed file size in bytes (default: 25 MB).
+            chunk_duration_threshold (float):
+                Minimum chunk duration for processing, required to be at least
+                0.1 seconds.
+            max_retries (int):
+                Maximum number of retries for failed API requests.
         """
         self.api_key = api_key or os.environ.get("AZURE_OPENAI_API_KEY")
         self.azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -165,6 +161,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
 
         self.deployment_name = deployment_name
         self.chunk_duration_threshold = chunk_duration_threshold
+        self.byte_limit = byte_limit
         self.max_retries = max_retries
         self.input_format = input_format
 
@@ -179,13 +176,22 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         return {k: v for k, v in params.items() if v is not None}
 
     def lazy_parse(self, blob: Blob) -> Iterator[Document]:
-        """Lazily parse the blob.
+        """
+        Lazily parse the provided audio blob for transcription.
 
         Args:
-            blob (Blob): The file to be parsed.
+            blob (Blob):
+                The audio file in Blob format to be transcribed.
 
-        Returns:
-            Iterator[Document]: The parsed transcript of the file.
+        Yields:
+            Document:
+                Parsed transcription from the audio file.
+
+        Raises:
+            ImportError:
+                If the required packages `openai` or `pydub` are not installed.
+            ValueError:
+                If the file type is unsupported or exceeds the size limit.
         """
 
         try:
@@ -203,6 +209,19 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 "pydub package not found, please install it with " "`pip install pydub`"
             )
 
+        if not str(blob.path).endswith(self.input_format):
+            raise ValueError(
+                "File must be of one of the following types: "
+                f"{str(self.input_format)}"
+            )
+        # Audio file from disk
+        audio = AudioSegment.from_file(blob.path)
+        if len(audio.raw_data) > self.byte_limit:
+            raise ValueError(
+                "Audio file exceeds 25 MB limit,"
+                f" length of file is {len(audio.raw_data)} bytes"
+            )
+
         if is_openai_v1():
             client = openai.AzureOpenAI(
                 api_key=self.api_key,
@@ -218,13 +237,6 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             if self.azure_endpoint:
                 openai.base_url = self.azure_endpoint
 
-        if not str(blob.path).endswith(self.input_format):
-            raise ValueError(
-                "File must be of one of the following types: "
-                f"{str(self.input_format)}"
-            )
-        # Audio file from disk
-        audio = AudioSegment.from_file(blob.path)
         # Get file extension from the file path
         dot_file_extension = os.path.splitext(str(blob.path))[1]
         file_extension = dot_file_extension[1:]
@@ -232,44 +244,31 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         # They do have equivalent flags that can be used though
         format_map = {"m4a": "mp4", "mpga": "mp3"}
         file_extension = format_map.get(file_extension, file_extension)
-        # Define the duration of each chunk in minutes
-        # Need to meet 25MB size limit for Whisper API
-        chunk_duration = 20
-        chunk_duration_ms = chunk_duration * 60 * 1000
 
-        # Split the audio into chunk_duration_ms chunks
-        for split_number, i in enumerate(range(0, len(audio), chunk_duration_ms)):
-            # Audio chunk
-            chunk = audio[i : i + chunk_duration_ms]
-            # Skip chunks that are too short to transcribe
-            if chunk.duration_seconds <= self.chunk_duration_threshold:
-                continue
-            file_obj = io.BytesIO(chunk.export(format=file_extension).read())
-            if blob.source is not None:
-                file_obj.name = (
-                    os.path.splitext(str(blob.source))[0]
-                    + f"_part_{split_number}.{file_extension}"
+        file_obj = io.BytesIO(audio.export(format=file_extension).read())
+
+        if blob.source is not None:
+            file_obj.name = str(blob.source)
+        else:
+            file_obj.name = str(blob.path)
+
+        # Transcribe
+        try:
+            if is_openai_v1():
+                transcript = client.audio.transcriptions.create(
+                    model=self.deployment_name,
+                    file=file_obj,
+                    **self._create_params,
                 )
             else:
-                file_obj.name = f"part_{split_number}.{file_extension}"
+                transcript = openai.Audio.transcribe(self.deployment_name, file_obj)
+        except Exception:
+            raise
 
-            # Transcribe
-            try:
-                if is_openai_v1():
-                    transcript = client.audio.transcriptions.create(
-                        model=self.deployment_name,
-                        file=file_obj,
-                        **self._create_params,
-                    )
-                else:
-                    transcript = openai.Audio.transcribe(self.deployment_name, file_obj)
-            except Exception:
-                raise
-
-            yield Document(
-                page_content=transcript.text,
-                metadata={"source": blob.source, "chunk": split_number},
-            )
+        yield Document(
+            page_content=transcript.text,
+            metadata={"source": blob.source},
+        )
 
 
 class OpenAIWhisperParser(BaseBlobParser):
@@ -346,8 +345,8 @@ class OpenAIWhisperParser(BaseBlobParser):
                 openai.base_url = self.base_url
 
         # Audio file from disk
-        audio = AudioSegment.from_file(blob.path)
 
+        audio = AudioSegment.from_file(blob.path)
         # Define the duration of each chunk in minutes
         # Need to meet 25MB size limit for Whisper API
         chunk_duration = 20
