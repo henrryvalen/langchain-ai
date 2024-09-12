@@ -214,12 +214,11 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 "File must be of one of the following types: "
                 f"{str(self.input_format)}"
             )
-        # Audio file from disk
-        audio = AudioSegment.from_file(blob.path)
-        if len(audio.raw_data) > self.byte_limit:
+        
+        if os.path.getsize(blob.source) > self.byte_limit:
             raise ValueError(
                 "Audio file exceeds 25 MB limit,"
-                f" length of file is {len(audio.raw_data)} bytes"
+                f" length of file is {os.path.getsize(blob.source)} bytes"
             )
 
         if is_openai_v1():
@@ -237,6 +236,8 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             if self.azure_endpoint:
                 openai.base_url = self.azure_endpoint
 
+        # Audio file from disk
+        audio = AudioSegment.from_file(blob.path)
         # Get file extension from the file path
         dot_file_extension = os.path.splitext(str(blob.path))[1]
         file_extension = dot_file_extension[1:]
