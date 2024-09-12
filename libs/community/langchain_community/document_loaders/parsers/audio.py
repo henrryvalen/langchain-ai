@@ -214,7 +214,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 "File must be of one of the following types: "
                 f"{str(self.input_format)}"
             )
-        
+
         if os.path.getsize(blob.source) > self.byte_limit:
             raise ValueError(
                 "Audio file exceeds 25 MB limit,"
