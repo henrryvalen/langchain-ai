@@ -96,6 +96,7 @@ def _get_search_client(
     cors_options: Optional[CorsOptions] = None,
     async_: bool = False,
     additional_search_client_options: Optional[Dict[str, Any]] = None,
+    azure_credential: Optional[Callable] = None,
 ) -> Union[SearchClient, AsyncSearchClient]:
     from azure.core.credentials import AccessToken, AzureKeyCredential, TokenCredential
     from azure.core.exceptions import ResourceNotFoundError
@@ -121,10 +122,12 @@ def _get_search_client(
 
     additional_search_client_options = additional_search_client_options or {}
     default_fields = default_fields or []
-    credential: Union[AzureKeyCredential, TokenCredential, InteractiveBrowserCredential]
 
+    credential: Union[AzureKeyCredential, TokenCredential, InteractiveBrowserCredential]
     # Determine the appropriate credential to use
-    if key is not None:
+    if azure_credential:
+        credential = azure_credential
+    elif key is not None:
         if key.upper() == "INTERACTIVE":
             credential = InteractiveBrowserCredential()
             credential.get_token("https://search.azure.com/.default")
@@ -259,14 +262,14 @@ def _get_search_client(
 
 
 class AzureSearch(VectorStore):
-    """`Azure Cognitive Search` vector store."""
+    """`Azure AI Search` vector store."""
 
     def __init__(
         self,
         azure_search_endpoint: str,
-        azure_search_key: str,
-        index_name: str,
-        embedding_function: Union[Callable, Embeddings],
+        azure_search_key: Optional[str] = None,
+        index_name: Optional[str] = None,
+        embedding_function: Union[Callable, Embeddings, None] = None,
         search_type: str = "hybrid",
         semantic_configuration_name: Optional[str] = None,
         fields: Optional[List[SearchField]] = None,
@@ -281,6 +284,7 @@ class AzureSearch(VectorStore):
         vector_search_dimensions: Optional[int] = None,
         additional_search_client_options: Optional[Dict[str, Any]] = None,
         azure_ad_access_token: Optional[str] = None,
+        azure_credential: Optional[Callable] = None,
         **kwargs: Any,
     ):
         try:
@@ -347,6 +351,7 @@ class AzureSearch(VectorStore):
             user_agent=user_agent,
             cors_options=cors_options,
             additional_search_client_options=additional_search_client_options,
+            azure_credential=azure_credential,
         )
         self.async_client = _get_search_client(
             azure_search_endpoint,
@@ -363,6 +368,7 @@ class AzureSearch(VectorStore):
             user_agent=user_agent,
             cors_options=cors_options,
             async_=True,
+            azure_credential=azure_credential,
         )
         self.search_type = search_type
         self.semantic_configuration_name = semantic_configuration_name
@@ -371,6 +377,7 @@ class AzureSearch(VectorStore):
         self._azure_search_endpoint = azure_search_endpoint
         self._azure_search_key = azure_search_key
         self._index_name = index_name
+        self._azure_credential = azure_credential
         self._semantic_configuration_name = semantic_configuration_name
         self._fields = fields
         self._vector_search = vector_search
@@ -1422,6 +1429,7 @@ class AzureSearch(VectorStore):
         azure_search_key: str = "",
         azure_ad_access_token: Optional[str] = None,
         index_name: str = "langchain-index",
+        azure_credential: Optional[Callable] = None,
         fields: Optional[List[SearchField]] = None,
         **kwargs: Any,
     ) -> AzureSearch:
@@ -1431,6 +1439,7 @@ class AzureSearch(VectorStore):
             azure_search_key,
             index_name,
             embedding,
+            azure_credential=azure_credential,
             fields=fields,
             azure_ad_access_token=azure_ad_access_token,
             **kwargs,
@@ -1448,6 +1457,7 @@ class AzureSearch(VectorStore):
         azure_search_key: str = "",
         azure_ad_access_token: Optional[str] = None,
         index_name: str = "langchain-index",
+        azure_credential: Optional[Callable] = None,
         fields: Optional[List[SearchField]] = None,
         **kwargs: Any,
     ) -> AzureSearch:
@@ -1457,6 +1467,7 @@ class AzureSearch(VectorStore):
             azure_search_key,
             index_name,
             embedding,
+            azure_credential=azure_credential,
             fields=fields,
             azure_ad_access_token=azure_ad_access_token,
             **kwargs,
@@ -1474,6 +1485,7 @@ class AzureSearch(VectorStore):
         azure_search_endpoint: str = "",
         azure_search_key: str = "",
         index_name: str = "langchain-index",
+        azure_credential: Optional[Callable] = None,
         fields: Optional[List[SearchField]] = None,
         **kwargs: Any,
     ) -> AzureSearch:
@@ -1487,6 +1499,7 @@ class AzureSearch(VectorStore):
             azure_search_key=azure_search_key,
             index_name=index_name,
             embedding_function=embedding,
+            azure_credential=azure_credential,
             fields=fields,
             vector_search_dimensions=vector_search_dimensions,
             **kwargs,
@@ -1504,6 +1517,7 @@ class AzureSearch(VectorStore):
         azure_search_endpoint: str = "",
         azure_search_key: str = "",
         index_name: str = "langchain-index",
+        azure_credential: Optional[Callable] = None,
         fields: Optional[List[SearchField]] = None,
         **kwargs: Any,
     ) -> AzureSearch:
@@ -1518,6 +1532,7 @@ class AzureSearch(VectorStore):
             azure_search_key=azure_search_key,
             index_name=index_name,
             embedding_function=embedding,
+            azure_credential=azure_credential,
             fields=fields,
             vector_search_dimensions=vector_search_dimensions,
             **kwargs,
