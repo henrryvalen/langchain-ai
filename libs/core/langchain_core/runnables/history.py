@@ -234,6 +234,7 @@ class RunnableWithMessageHistory(RunnableBindingBase):
     output_messages_key: Optional[str] = None
     history_messages_key: Optional[str] = None
     history_factory_config: Sequence[ConfigurableFieldSpec]
+    runnable_schema: Type[BaseModel]
 
     @classmethod
     def get_lc_namespace(cls) -> List[str]:
@@ -352,6 +353,8 @@ class RunnableWithMessageHistory(RunnableBindingBase):
                 ),
             ]
 
+        runnable_schema = runnable.get_input_schema()
+
         super().__init__(
             get_session_history=get_session_history,
             input_messages_key=input_messages_key,
@@ -359,6 +362,7 @@ class RunnableWithMessageHistory(RunnableBindingBase):
             bound=bound,
             history_messages_key=history_messages_key,
             history_factory_config=_config_specs,
+            runnable_schema=runnable_schema,
             **kwargs,
         )
 
@@ -388,6 +392,18 @@ class RunnableWithMessageHistory(RunnableBindingBase):
                 fields[self.input_messages_key] = (Sequence[BaseMessage], ...)
             else:
                 fields["__root__"] = (Sequence[BaseMessage], ...)
+
+            if "properties" in self.runnable_schema.schema():
+                for key in self.runnable_schema.schema()["properties"]:
+                    if (
+                        key != self.input_messages_key
+                        and key != self.history_messages_key
+                    ):
+                        fields[key] = (
+                            Union[str],
+                            ...,
+                        )
+
             return create_model(  # type: ignore[call-overload]
                 "RunnableWithChatHistoryInput",
                 **fields,

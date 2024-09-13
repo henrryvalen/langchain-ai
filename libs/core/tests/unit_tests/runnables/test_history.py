@@ -1,6 +1,7 @@
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Union, cast
 
 import pytest
+from typing_extensions import TypedDict
 
 from langchain_core.callbacks import (
     CallbackManagerForLLMRun,
@@ -9,7 +10,7 @@ from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
-from langchain_core.pydantic_v1 import BaseModel
+from langchain_core.pydantic_v1 import BaseModel, create_model_from_typeddict
 from langchain_core.runnables import Runnable
 from langchain_core.runnables.base import RunnableBinding, RunnableLambda
 from langchain_core.runnables.config import RunnableConfig
@@ -423,27 +424,37 @@ async def test_output_dict_async() -> None:
 def test_get_input_schema_input_dict() -> None:
     class RunnableWithChatHistoryInput(BaseModel):
         input: Union[str, BaseMessage, Sequence[BaseMessage]]
+        input_key_1: str
+        input_key_2: str
 
-    runnable = RunnableLambda(
-        lambda input: {
-            "output": [
-                AIMessage(
-                    content="you said: "
-                    + "\n".join(
-                        [
-                            str(m.content)
-                            for m in input["history"]
-                            if isinstance(m, HumanMessage)
-                        ]
-                        + [input["input"]]
-                    )
-                )
-            ]
-        }
-    )
+    class RunnableInput(TypedDict):
+        input: Union[str, BaseMessage, Sequence[BaseMessage]]
+        history: List[BaseMessage]
+        input_key_1: str
+        input_key_2: str
+
+    class RunnableLambdaWithFakeSchema(RunnableLambda):
+        def get_input_schema(
+            self, config: RunnableConfig | None = None
+        ) -> type[BaseModel]:
+            "Return fake pydantic schema"
+            return create_model_from_typeddict(RunnableInput)
+
+    def _callable(input: RunnableInput) -> Dict[str, Any]:
+        history = "\n".join(str(m.content) for m in input["history"])
+        if isinstance(input["input"], str):
+            input_str = input["input"]
+        elif isinstance(input["input"], BaseMessage):
+            input_str = str(input["input"].content)
+        else:
+            input_str = "\n".join(str(m.content) for m in input["input"])
+        return {"output": [AIMessage("\n".join(["you said:", history, input_str]))]}
+
+    runnable = RunnableLambdaWithFakeSchema(_callable)
+
     get_session_history = _get_get_session_history()
     with_history = RunnableWithMessageHistory(
-        runnable,
+        cast(Runnable, runnable),
         get_session_history,
         input_messages_key="input",
         history_messages_key="history",
