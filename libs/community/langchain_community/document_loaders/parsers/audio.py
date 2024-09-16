@@ -202,7 +202,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 openai.api_version = self.api_version
             openai.api_type = "azure"
 
-        file_obj = open(blob.path, "rb")
+        file_obj = open(str(blob.path), "rb")
 
         # Transcribe
         try:
