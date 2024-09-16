@@ -99,7 +99,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         temperature: Optional[float] = None,
         deployment_name: str,
         chunk_duration_threshold: float = 0.1,
-        #byte_limit: int = 26222592,
+        # byte_limit: int = 26222592,
         max_retries: int = 3,
     ):
         """
@@ -172,9 +172,9 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
 
         Raises:
             ImportError:
-                If the required packages `openai` or `pydub` are not installed.
-            ValueError:
-                If the file type is unsupported or exceeds the size limit.
+                If the required package `openai` is not installed.
+            Exception:
+                If an error occurs during transcription.
         """
 
         try:
@@ -183,13 +183,6 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             raise ImportError(
                 "openai package not found, please install it with "
                 "`pip install openai`"
-            )
-
-        try:
-            from pydub import AudioSegment
-        except ImportError:
-            raise ImportError(
-                "pydub package not found, please install it with " "`pip install pydub`"
             )
 
         if is_openai_v1():
@@ -209,9 +202,9 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 openai.api_version = self.api_version
             openai.api_type = "azure"
 
-        file_obj = open(blob.path, 'rb')
+        file_obj = open(blob.path, "rb")
 
-        #Transcribe
+        # Transcribe
         try:
             if is_openai_v1():
                 transcript = client.audio.transcriptions.create(
@@ -220,18 +213,20 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                     **self._create_params,
                 )
             else:
-                transcript = openai.Audio.transcribe(model=self.deployment_name, 
-                                                    deployment_id=self.deployment_name, 
-                                                    file=file_obj)
+                transcript = openai.Audio.transcribe(
+                    model=self.deployment_name,
+                    deployment_id=self.deployment_name,
+                    file=file_obj,
+                )
         except Exception:
             raise
 
         yield Document(
-                page_content=transcript.text
-                if not isinstance(transcript, str)
-                else transcript,
-                metadata={"source": blob.source},
-            )
+            page_content=transcript.text
+            if not isinstance(transcript, str)
+            else transcript,
+            metadata={"source": blob.source},
+        )
 
 
 class OpenAIWhisperParser(BaseBlobParser):
