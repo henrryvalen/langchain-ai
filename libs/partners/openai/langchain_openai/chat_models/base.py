@@ -1027,6 +1027,7 @@ class BaseChatOpenAI(BaseChatModel):
             Union[dict, str, Literal["auto", "none", "required", "any"], bool]
         ] = None,
         strict: Optional[bool] = None,
+        response_format: Optional[_DictOrPydanticClass] = None,
         **kwargs: Any,
     ) -> Runnable[LanguageModelInput, BaseMessage]:
         """Bind tool-like objects to this chat model.
@@ -1058,11 +1059,22 @@ class BaseChatOpenAI(BaseChatModel):
                 If None, ``strict`` argument will not be passed to the model.
 
                 .. versionadded:: 0.1.21
+            response_format: Format to respond to the users.
+                The response schema. Can be passed in as:
+                    - an OpenAI function/tool schema,
+                    - a JSON Schema,
+                    - a TypedDict class (support added in 0.1.20),
+                    - or a Pydantic class.
+                If ``response_format`` is a Pydantic class then the model output will be a
+                Pydantic instance of that class, and the model-generated fields will be
+                validated by the Pydantic class. Otherwise the model output will be a
+                dict and will not be validated. See :meth:`langchain_core.utils.function_calling.convert_to_openai_tool`
+                for more on how to properly specify types and descriptions of
+                schema fields when specifying a Pydantic or TypedDict class.
 
             kwargs: Any additional parameters are passed directly to
                 ``self.bind(**kwargs)``.
         """  # noqa: E501
-
         formatted_tools = [
             convert_to_openai_tool(tool, strict=strict) for tool in tools
         ]
@@ -1099,6 +1111,10 @@ class BaseChatOpenAI(BaseChatModel):
                     f"Received: {tool_choice}"
                 )
             kwargs["tool_choice"] = tool_choice
+        if response_format is not None:
+            kwargs["response_format"] = _convert_to_openai_response_format(
+                response_format, strict=strict if strict is not None else True
+            )
         return super().bind(tools=formatted_tools, **kwargs)
 
     def with_structured_output(
