@@ -31,8 +31,11 @@ def test_azure_openai_whisper(mock_client: MagicMock) -> None:
 
 
 @pytest.mark.requires("openai")
+@patch("openai.AzureOpenAI")
 @patch("openai.audio.transcriptions.create")
-def test_azure_openai_whisper_lazy_parse(mock_client: MagicMock) -> None:
+def test_azure_openai_whisper_lazy_parse(
+    mock_client: MagicMock, mock_transcribe: MagicMock
+) -> None:
     endpoint = "endpoint"
     key = "key"
     version = "115"
@@ -42,14 +45,22 @@ def test_azure_openai_whisper_lazy_parse(mock_client: MagicMock) -> None:
         api_key=key, azure_endpoint=endpoint, api_version=version, deployment_name=name
     )
 
+    mock_client.assert_called_once_with(
+        api_key=key,
+        azure_endpoint=endpoint,
+        api_version=version,
+        max_retries=3,
+        azure_ad_token=None,
+    )
+
     mock_response = "This is a mock transcription"
-    mock_client.audio.transcriptions.create.return_value = mock_response
+    mock_transcribe.audio.transcriptions.create.return_value = mock_response
 
     blob = Blob(path="audio_path.m4a", data=b"Great day for fishing ain't it")
     docs = parser.lazy_parse(blob=blob)
 
     file_obj = io.BytesIO(b"Great day for fishing ain't it")
-    mock_client.assert_called_once_with(
+    mock_transcribe.assert_called_once_with(
         model=name,
         file=file_obj,
     )
