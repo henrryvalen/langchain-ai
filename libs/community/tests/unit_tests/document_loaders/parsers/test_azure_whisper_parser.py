@@ -45,7 +45,7 @@ def test_azure_openai_whisper_lazy_parse(mock_client: MagicMock) -> None:
     mock_response = "This is a mock transcription"
     mock_client.audio.transcriptions.create.return_value = mock_response
 
-    blob = Blob(path="audio_path.m4a")
+    blob = Blob(path="audio_path.m4a", data=b"Great day for fishing ain't it")
     docs = parser.lazy_parse(blob=blob)
 
     file_obj = io.BytesIO(b"Great day for fishing ain't it")
