@@ -12,13 +12,14 @@ from langchain_community.document_loaders.parsers.audio import AzureOpenAIWhispe
 def test_azure_openai_whisper(mock_client: MagicMock) -> None:
     endpoint = "endpoint"
     key = "key"
-    name = "model"
     version = "37"
 
     parser = AzureOpenAIWhisperParser(
-        api_key=key, azure_endpoint=endpoint, deployment_name=name, api_version=version
+        api_key=key, azure_endpoint=endpoint, api_version=version
     )
     mock_client.assert_called_once_with(
-        endpoint=endpoint, key=key, deployment_name=name, version=version
+        api_key=key, azure_endpoint=endpoint, api_version=version,
+        max_retries=3, azure_ad_token=None
+
     )
     assert parser._client == mock_client()
