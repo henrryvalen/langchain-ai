@@ -53,8 +53,8 @@ def test_azure_openai_whisper_lazy_parse(
         azure_ad_token=None,
     )
 
-    mock_response = "This is a mock transcription"
-    mock_transcribe.audio.transcriptions.create.return_value = mock_response
+    mock_response = MagicMock(text="This is a mock transcription")
+    mock_transcribe.return_value = mock_response
 
     blob = Blob(path="audio_path.m4a", data=b"Great day for fishing ain't it")
     docs = parser.lazy_parse(blob=blob)
@@ -65,5 +65,5 @@ def test_azure_openai_whisper_lazy_parse(
         file=file_obj,
     )
     for doc in docs:
-        assert doc.page_content == mock_response
+        assert doc.page_content == mock_response.text
         assert doc.metadata == blob.source
