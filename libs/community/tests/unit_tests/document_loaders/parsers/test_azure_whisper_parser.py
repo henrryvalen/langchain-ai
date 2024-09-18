@@ -53,6 +53,6 @@ def test_azure_openai_whisper_lazy_parse(mock_client: MagicMock) -> None:
         model=name,
         file=file_obj,
     )
-
-    assert docs.page_content == mock_response
-    assert docs.metadata == blob.source
+    for doc in docs:
+        assert doc.page_content == mock_response
+        assert doc.metadata == blob.source
