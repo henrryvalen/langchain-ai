@@ -165,6 +165,54 @@ def test_subclass_annotated_base_tool_accepted() -> None:
     assert tool.args_schema == _MockSchema
 
 
+def test_decorator_with_error_handling() -> None:
+    """Test that error handling works when passed through decorator."""
+
+    @tool()
+    def tool_func(arg1: int, arg2: int) -> float:
+        """foo bar tool"""
+        return arg1 / arg2
+
+    with pytest.raises(ToolException):
+        tool_func.invoke({"arg1": 1, "arg2": 0})
+
+    with pytest.raises(ValidationError):
+        tool_func.invoke({"arg1": 1})
+
+    @tool(handle_tool_error="foo", handle_validation_error="bar")
+    def tool_func_2(arg1: int, arg2: int) -> float:
+        """foo bar tool"""
+        return arg1 / arg2
+
+    tool_exception = tool_func_2.invoke({"arg1": 1, "arg2": 0})
+    assert tool_exception == "foo"
+
+    validation_error = tool_func_2.invoke({"arg1": 1})
+    assert validation_error == "bar"
+
+    @tool(handle_tool_error=lambda e: "foo", handle_validation_error=lambda e: "bar")
+    def tool_func_3(arg1: int, arg2: int) -> float:
+        """foo bar tool"""
+        return arg1 / arg2
+
+    tool_exception = tool_func_3.invoke({"arg1": 1, "arg2": 0})
+    assert tool_exception == "foo"
+
+    validation_error = tool_func_3.invoke({"arg1": 1})
+    assert validation_error == "bar"
+
+    @tool(handle_tool_error=True, handle_validation_error=True)
+    def tool_func_4(arg1: int, arg2: int) -> float:
+        """foo bar tool"""
+        return arg1 / arg2
+
+    tool_exception = tool_func_4.invoke({"arg1": 1, "arg2": 0})
+    assert tool_exception == "division by zero"
+
+    validation_error = tool_func_4.invoke({"arg1": 1})
+    assert validation_error == "Tool input validation error"
+
+
 def test_decorator_with_specified_schema() -> None:
     """Test that manually specified schemata are passed through to the tool."""
 
@@ -737,7 +785,7 @@ def test_exception_handling_callable() -> None:
 
 def test_exception_handling_non_tool_exception() -> None:
     _tool = _FakeExceptionTool(exception=ValueError())
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolException):
         _tool.run({})
 
 
@@ -768,7 +816,7 @@ async def test_async_exception_handling_callable() -> None:
 
 async def test_async_exception_handling_non_tool_exception() -> None:
     _tool = _FakeExceptionTool(exception=ValueError())
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolException):
         await _tool.arun({})
 
 
@@ -864,7 +912,7 @@ def test_validation_error_handling_non_validation_error(
             return "dummy"
 
     _tool = _RaiseNonValidationErrorTool(handle_validation_error=handler)  # type: ignore[call-arg]
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ToolException):
         _tool.run({})
 
 
@@ -926,7 +974,7 @@ async def test_async_validation_error_handling_non_validation_error(
             return "dummy"
 
     _tool = _RaiseNonValidationErrorTool(handle_validation_error=handler)  # type: ignore[call-arg]
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ToolException):
         await _tool.arun({})
 
 
@@ -1467,10 +1515,7 @@ def test_tool_injected_arg_without_schema(tool_: BaseTool) -> None:
     assert tool_.invoke(
         {"name": "foo", "args": {"x": 5, "y": "bar"}, "id": "123", "type": "tool_call"}
     ) == ToolMessage("bar", tool_call_id="123", name="foo")
-    expected_error = (
-        ValidationError if not isinstance(tool_, InjectedTool) else TypeError
-    )
-    with pytest.raises(expected_error):
+    with pytest.raises(ToolException):
         tool_.invoke({"x": 5})
 
     assert convert_to_openai_function(tool_) == {
@@ -2089,5 +2134,5 @@ def test_structured_tool_direct_init() -> None:
 
     tool = StructuredTool(name="foo", args_schema=fooSchema, coroutine=asyncFoo)
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ToolException):
         assert tool.invoke("hello") == "hello"
