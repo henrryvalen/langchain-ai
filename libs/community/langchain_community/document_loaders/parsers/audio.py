@@ -133,6 +133,9 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 0.1 seconds.
             max_retries (int):
                 Maximum number of retries for failed API requests.
+        Raises:
+            ImportError:
+                If the required package `openai` is not installed.
         """
         self.api_key = api_key or os.environ.get("AZURE_OPENAI_API_KEY")
         self.azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
@@ -147,6 +150,32 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         self.deployment_name = deployment_name
         self.chunk_duration_threshold = chunk_duration_threshold
         self.max_retries = max_retries
+
+        try:
+            import openai
+        except ImportError:
+            raise ImportError(
+                "openai package not found, please install it with "
+                "`pip install openai`"
+            )
+
+        if is_openai_v1():
+            self._client = openai.AzureOpenAI(
+                api_key=self.api_key,
+                azure_endpoint=self.azure_endpoint,
+                api_version=self.api_version,
+                max_retries=self.max_retries,
+                azure_ad_token=self.azure_ad_token,
+            )
+        else:
+            if self.api_key:
+                openai.api_key = self.api_key
+            if self.azure_endpoint:
+                openai.api_base = self.azure_endpoint
+            if self.api_version:
+                openai.api_version = self.api_version
+            openai.api_type = "azure"
+            self._client = openai
 
     @property
     def _create_params(self) -> Dict[str, Any]:
@@ -171,49 +200,22 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 Parsed transcription from the audio file.
 
         Raises:
-            ImportError:
-                If the required package `openai` is not installed.
             Exception:
                 If an error occurs during transcription.
         """
-
-        try:
-            import openai
-        except ImportError:
-            raise ImportError(
-                "openai package not found, please install it with "
-                "`pip install openai`"
-            )
-
-        if is_openai_v1():
-            client = openai.AzureOpenAI(
-                api_key=self.api_key,
-                azure_endpoint=self.azure_endpoint,
-                api_version=self.api_version,
-                max_retries=self.max_retries,
-                azure_ad_token=self.azure_ad_token,
-            )
-        else:
-            if self.api_key:
-                openai.api_key = self.api_key
-            if self.azure_endpoint:
-                openai.api_base = self.azure_endpoint
-            if self.api_version:
-                openai.api_version = self.api_version
-            openai.api_type = "azure"
 
         file_obj = open(str(blob.path), "rb")
 
         # Transcribe
         try:
             if is_openai_v1():
-                transcript = client.audio.transcriptions.create(
+                transcript = self._client.audio.transcriptions.create(
                     model=self.deployment_name,
                     file=file_obj,
                     **self._create_params,
                 )
             else:
-                transcript = openai.Audio.transcribe(
+                transcript = self._client.Audio.transcribe(
                     model=self.deployment_name,
                     deployment_id=self.deployment_name,
                     file=file_obj,

@@ -21,4 +21,4 @@ def test_azure_openai_whisper(mock_client: MagicMock) -> None:
     mock_client.assert_called_once_with(
         endpoint=endpoint, key=key, deployment_name=name, version=version
     )
-    assert parser.client == mock_client()
+    assert parser._client == mock_client()
