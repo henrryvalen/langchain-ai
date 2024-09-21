@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.documents.base import Blob
+from openai import AzureOpenAI
 
-import openai
 from langchain_community.document_loaders.parsers.audio import AzureOpenAIWhisperParser
 
 
@@ -33,8 +33,7 @@ def test_azure_openai_whisper(mock_client: MagicMock) -> None:
 
 @pytest.mark.requires("openai")
 @patch("openai.AzureOpenAI")
-# "langchain_community.document_loaders.parsers.audio.AzureOpenAIWhisperParser.openai.audio.transcriptions"
-@patch.object(openai.AzureOpenAI.audio.transcriptions, "create")
+@patch.object(AzureOpenAI.audio.transcriptions, "create")
 def test_azure_openai_whisper_lazy_parse(
     mock_client: MagicMock, mock_transcribe: MagicMock
 ) -> None:

@@ -2,7 +2,7 @@ import io
 import logging
 import os
 import time
-from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union, Callable
 
 from langchain_core.documents import Document
 
@@ -22,8 +22,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
     an Azure endpoint and credentials. The parser is limited to files under 25 MB.
 
     **Note**:
-    While this parser uses the Azure OpenAI API, it is configured for Azure OpenAI
-    services. The key difference is the integration with the Azure ecosystem,
+    This parser uses the Azure OpenAI API, providing integration with the Azure ecosystem, and
     making it suitable for workflows involving other Azure services.
 
     For files larger than 25 MB, consider using Azure AI Speech batch transcription:
@@ -49,7 +48,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
 
             whisper_parser = AzureOpenAIWhisperParser(
                 deployment_name="your-whisper-deployment",
-                api_version="2024-05-01-preview",
+                api_version="2024-06-01",
                 api_key="your-api-key",
                 # other params...
             )
@@ -90,7 +89,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         api_key: Optional[str] = None,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = None,
-        azure_ad_token: Optional[str] = None,
+        azure_ad_token_provider: Union[Callable[[], str], None] = None,
         language: Optional[str] = None,
         prompt: Optional[str] = None,
         response_format: Union[
@@ -98,8 +97,6 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         ] = None,
         temperature: Optional[float] = None,
         deployment_name: str,
-        chunk_duration_threshold: float = 0.1,
-        # byte_limit: int = 26222592,
         max_retries: int = 3,
     ):
         """
@@ -115,7 +112,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
             api_version (Optional[str]):
                 API version to use,
                 defaults to the `OPENAI_API_VERSION` environment variable.
-            azure_ad_token (Optional[str]):
+            azure_ad_token_provider (Union[Callable[[], str], None]):
                 Azure Active Directory token for authentication (if applicable).
             language (Optional[str]):
                 Language in which the request should be processed.
@@ -128,9 +125,6 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 Controls the randomness of the model's output.
             deployment_name (str):
                 The deployment name of the Whisper model.
-            chunk_duration_threshold (float):
-                Minimum chunk duration for processing, required to be at least
-                0.1 seconds.
             max_retries (int):
                 Maximum number of retries for failed API requests.
         Raises:
@@ -140,7 +134,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         self.api_key = api_key or os.environ.get("AZURE_OPENAI_API_KEY")
         self.azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
         self.api_version = api_version or os.environ.get("OPENAI_API_VERSION")
-        self.azure_ad_token = azure_ad_token
+        self.azure_ad_token_provider = azure_ad_token_provider
 
         self.language = language
         self.prompt = prompt
@@ -148,7 +142,6 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
         self.temperature = temperature
 
         self.deployment_name = deployment_name
-        self.chunk_duration_threshold = chunk_duration_threshold
         self.max_retries = max_retries
 
         try:
@@ -165,7 +158,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                 azure_endpoint=self.azure_endpoint,
                 api_version=self.api_version,
                 max_retries=self.max_retries,
-                azure_ad_token=self.azure_ad_token,
+                azure_ad_token=self.azure_ad_token_provider,
             )
         else:
             if self.api_key:
@@ -219,6 +212,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                     model=self.deployment_name,
                     deployment_id=self.deployment_name,
                     file=file_obj,
+                    **self._create_params
                 )
         except Exception:
             raise
@@ -302,7 +296,7 @@ class OpenAIWhisperParser(BaseBlobParser):
             if self.api_key:
                 openai.api_key = self.api_key
             if self.base_url:
-                openai.base_url = self.base_url
+                openai.api_base = self.base_url
 
         # Audio file from disk
 
