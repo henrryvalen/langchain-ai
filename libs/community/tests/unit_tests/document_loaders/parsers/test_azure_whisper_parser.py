@@ -1,6 +1,7 @@
 """Tests for the Azure OpenAI Whisper parser."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -37,7 +38,7 @@ def test_azure_openai_whisper(mock_client: Mock) -> None:
 
 
 @pytest.mark.requires("openai")
-def test_is_openai_v1_lazy_parse(mocker) -> None:
+def test_is_openai_v1_lazy_parse(mocker: Any) -> None:
     endpoint = "endpoint"
     key = "key"
     version = "115"
@@ -71,7 +72,7 @@ def test_is_openai_v1_lazy_parse(mocker) -> None:
 
 
 @pytest.mark.requires("openai")
-def test_is_not_openai_v1_lazy_parse(mocker) -> None:
+def test_is_not_openai_v1_lazy_parse(mocker: Any) -> None:
     endpoint = "endpoint"
     key = "key"
     version = "115"
