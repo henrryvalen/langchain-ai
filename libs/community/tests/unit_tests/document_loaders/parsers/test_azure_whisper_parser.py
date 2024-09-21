@@ -37,7 +37,7 @@ def test_azure_openai_whisper(mock_client: Mock) -> None:
 
 
 @pytest.mark.requires("openai")
-def test_is_openai_v1_lazy_parse(mocker):
+def test_is_openai_v1_lazy_parse(mocker) -> None:
     endpoint = "endpoint"
     key = "key"
     version = "115"
@@ -71,7 +71,7 @@ def test_is_openai_v1_lazy_parse(mocker):
 
 
 @pytest.mark.requires("openai")
-def test_is_not_openai_v1_lazy_parse(mocker):
+def test_is_not_openai_v1_lazy_parse(mocker) -> None:
     endpoint = "endpoint"
     key = "key"
     version = "115"
