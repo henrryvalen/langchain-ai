@@ -32,9 +32,7 @@ def test_azure_openai_whisper(mock_client: MagicMock) -> None:
 
 @pytest.mark.requires("openai")
 @patch("openai.AzureOpenAI")
-@patch(
-    "libs.community.langchain_community.document_loaders.parsers.audio.AzureOpenAIWhisperParser._client.audio.transcriptions.create"
-)
+@patch("openai.AzureOpenAI.audio.transcriptions.create")
 def test_azure_openai_whisper_lazy_parse(
     mock_transcribe: MagicMock, mock_client: MagicMock
 ) -> None:
