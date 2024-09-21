@@ -35,12 +35,14 @@ def test_azure_openai_whisper(mock_client: MagicMock) -> None:
 @patch("openai.AzureOpenAI")
 @patch.object(openai.audio.transcriptions, "create")
 def test_azure_openai_whisper_lazy_parse(
-    mock_client: MagicMock, mock_transcribe: MagicMock
+    mock_transcribe: MagicMock, mock_client: MagicMock
 ) -> None:
     endpoint = "endpoint"
     key = "key"
     version = "115"
     name = "model"
+
+    mock_client.return_value = mock_client
 
     parser = AzureOpenAIWhisperParser(
         api_key=key, azure_endpoint=endpoint, api_version=version, deployment_name=name

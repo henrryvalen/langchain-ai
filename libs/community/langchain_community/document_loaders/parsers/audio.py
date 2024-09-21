@@ -2,7 +2,7 @@ import io
 import logging
 import os
 import time
-from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union, Callable
+from typing import Any, Callable, Dict, Iterator, Literal, Optional, Tuple, Union
 
 from langchain_core.documents import Document
 
@@ -22,8 +22,8 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
     an Azure endpoint and credentials. The parser is limited to files under 25 MB.
 
     **Note**:
-    This parser uses the Azure OpenAI API, providing integration with the Azure ecosystem, and
-    making it suitable for workflows involving other Azure services.
+    This parser uses the Azure OpenAI API, providing integration with the Azure
+     ecosystem, and making it suitable for workflows involving other Azure services.
 
     For files larger than 25 MB, consider using Azure AI Speech batch transcription:
     https://learn.microsoft.com/azure/ai-services/speech-service/batch-transcription-create?pivots=rest-api#use-a-whisper-model
@@ -212,7 +212,7 @@ class AzureOpenAIWhisperParser(BaseBlobParser):
                     model=self.deployment_name,
                     deployment_id=self.deployment_name,
                     file=file_obj,
-                    **self._create_params
+                    **self._create_params,
                 )
         except Exception:
             raise
