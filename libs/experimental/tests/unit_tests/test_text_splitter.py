@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Optional
 
 import pytest
 from langchain_core.embeddings import Embeddings
@@ -15,14 +15,13 @@ FAKE_EMBEDDINGS = [
     [0.73275, 0.22089, 0.42652, 0.48204],
     [0.47466, 0.26161, 0.79687, 0.26694],
 ]
-SAMPLE_TEXT = (
-    "We need to harvest synergy effects viral engagement, but digitalize, "
-    "nor overcome key issues to meet key milestones. So digital literacy "
-    "where the metal hits the meat. So this vendor is incompetent. Can "
-    "you champion this? Let me diarize this. And we can synchronise "
-    "ourselves at a later timepoint t-shaped individual tread it daily. "
-    "That is a good problem"
-)
+SAMPLE_TEXT = """
+We need to harvest synergy effects viral engagement, but digitalize, nor 
+overcome key issues to meet key milestones. So digital literacy where the 
+metal hits the meat. So this vendor is incompetent. Can you champion this? 
+Let me diarize this. And we can synchronise ourselves at a later timepoint 
+t-shaped individual tread it daily. That is a good problem
+"""
 
 
 class MockEmbeddings(Embeddings):
@@ -52,3 +51,27 @@ def test_split_text_gradient(input_length: int, expected_length: int) -> None:
     chunks = chunker.split_text(" ".join(list_of_sentences))
 
     assert len(chunks) == expected_length
+
+
+@pytest.mark.parametrize(
+    "min_chunk_size, expected_chunks",
+    [
+        (None, 4),
+        (30, 4),
+        (60, 3),
+        (120, 3),
+        (240, 2),
+    ],
+)
+def test_min_chunk_size(min_chunk_size: Optional[int], expected_chunks: int) -> None:
+    embeddings = MockEmbeddings()
+    chunker = SemanticChunker(
+        embeddings,
+        breakpoint_threshold_type="percentile",
+        breakpoint_threshold_amount=50,
+        min_chunk_size=min_chunk_size,
+    )
+
+    chunks = chunker.split_text(SAMPLE_TEXT)
+
+    assert len(chunks) == expected_chunks
