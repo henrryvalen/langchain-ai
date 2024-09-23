@@ -21,11 +21,14 @@ def env_var_is_set(env_var: str) -> bool:
     )
 
 
+_get_from_env_default_sentinel = object()
+
+
 def get_from_dict_or_env(
     data: dict[str, Any],
     key: Union[str, list[str]],
     env_key: str,
-    default: Optional[str] = None,
+    default: Optional[Union[str, object]] = _get_from_env_default_sentinel,
 ) -> str:
     """Get a value from a dictionary or an environment variable.
 
@@ -35,8 +38,8 @@ def get_from_dict_or_env(
             in order.
         env_key: The environment variable to look up if the key is not
             in the dictionary.
-        default: The default value to return if the key is not in the dictionary
-            or the environment. Defaults to None.
+         default: The default value to return if the key is not in the dictionary
+            or the environment. Defaults to object() as a sentinel. https://peps.python.org/pep-0661/
     """
     if isinstance(key, (list, tuple)):
         for k in key:
@@ -51,19 +54,24 @@ def get_from_dict_or_env(
         key_for_err = key[0]
     else:
         key_for_err = key
+    if default is _get_from_env_default_sentinel:
+        return get_from_env(key_for_err, env_key)
+    else:
+        return get_from_env(key_for_err, env_key, default=default)
 
-    return get_from_env(key_for_err, env_key, default=default)
 
-
-def get_from_env(key: str, env_key: str, default: Optional[str] = None) -> str:
+def get_from_env(
+    key: str,
+    env_key: str,
+    default: Optional[Union[str, object]] = _get_from_env_default_sentinel,
+) -> str:
     """Get a value from a dictionary or an environment variable.
-
     Args:
         key: The key to look up in the dictionary.
         env_key: The environment variable to look up if the key is not
             in the dictionary.
         default: The default value to return if the key is not in the dictionary
-            or the environment. Defaults to None.
+            or the environment. Defaults to object() as a sentinel. https://peps.python.org/pep-0661/
 
     Returns:
         str: The value of the key.
@@ -74,8 +82,8 @@ def get_from_env(key: str, env_key: str, default: Optional[str] = None) -> str:
     """
     if env_key in os.environ and os.environ[env_key]:
         return os.environ[env_key]
-    elif default is not None:
-        return default
+    elif default is not _get_from_env_default_sentinel:
+        return str(default)
     else:
         raise ValueError(
             f"Did not find {key}, please add an environment variable"
