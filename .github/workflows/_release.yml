@@ -132,8 +132,7 @@ jobs:
     needs:
       - build
       - release-notes
-    uses:
-      ./.github/workflows/_test_release.yml
+    uses: ./.github/workflows/_test_release.yml
     permissions: write-all
     with:
       working-directory: ${{ inputs.working-directory }}
@@ -232,8 +231,7 @@ jobs:
         id: min-version
         run: |
           poetry run pip install packaging
-          python_version="$(poetry run python --version | awk '{print $2}')"
-          min_versions="$(poetry run python $GITHUB_WORKSPACE/.github/scripts/get_min_versions.py pyproject.toml release $python_version)"
+          min_versions="$(poetry run python $GITHUB_WORKSPACE/.github/scripts/get_min_versions.py pyproject.toml release)"
           echo "min-versions=$min_versions" >> "$GITHUB_OUTPUT"
           echo "min-versions=$min_versions"
 
@@ -294,6 +292,12 @@ jobs:
           UPSTAGE_API_KEY: ${{ secrets.UPSTAGE_API_KEY }}
           FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
           UNSTRUCTURED_API_KEY: ${{ secrets.UNSTRUCTURED_API_KEY }}
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+          SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
         run: make integration_tests
         working-directory: ${{ inputs.working-directory }}
 
