@@ -144,6 +144,12 @@ def _import_clarifai() -> Type[BaseLLM]:
     return Clarifai
 
 
+def _import_cleanlab() -> Type[BaseLLM]:
+    from langchain_community.llms.cleanlab import CleanlabTLM
+
+    return CleanlabTLM
+
+
 def _import_cohere() -> Type[BaseLLM]:
     from langchain_community.llms.cohere import Cohere
 
@@ -699,6 +705,8 @@ def __getattr__(name: str) -> Any:
         return _import_chatglm()
     elif name == "Clarifai":
         return _import_clarifai()
+    elif name == "Cleanlab":
+        return _import_cleanlab()
     elif name == "Cohere":
         return _import_cohere()
     elif name == "CTransformers":
@@ -890,6 +898,7 @@ __all__ = [
     "CerebriumAI",
     "ChatGLM",
     "Clarifai",
+    "Cleanlab",
     "Cohere",
     "Databricks",
     "DeepInfra",
@@ -991,6 +1000,7 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[BaseLLM]]]:
         "cerebriumai": _import_cerebriumai,
         "chat_glm": _import_chatglm,
         "clarifai": _import_clarifai,
+        "cleanlab": _import_cleanlab,
         "cohere": _import_cohere,
         "ctransformers": _import_ctransformers,
         "ctranslate2": _import_ctranslate2,
